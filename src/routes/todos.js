@@ -16,6 +16,7 @@ const {
 const {
   exportTodoTxt
 } = require('../model/todotxt')
+const ObjectID = require('mongodb').ObjectID
 
 function _todoTxtStringify({ doc }) {
   if (!doc) {
@@ -64,24 +65,14 @@ router.use(apiAuth)
 
 // Получение списка задач. Фильтры задаются параметрами GET-запроса
 router.get('/', totalMiddleware, async (ctx, next) => {
-  const { contentType } = ctx.query
+  const { query } = ctx.request
 
   const filter = {
-    /*
-      TODO [Урок 4.1]: Заполните значение переменной filter.
-
-      Значение переменной filter используется в функции #getTodos в файле 'src/model/todo.js'.
-      Переменная filter должна содержать параметры запроса к базе данных на выборку записей списка дел.
-      Например, { completed: true } или { completed: false }.
-
-      В качестве входных данных используйте объект ctx.query.
-      Для преобразования типов данных входных параметров используйте функцию #parseFilterValue
-    */
-
     ...Object.
-      entries(ctx.request.query).
+      entries(query).
       reduce((result, [key, value]) => {
         /* добавляем в result значение { [key]: value } */
+        if (key === 'id') key = '_id';
         result[key] = parseFilterValue(value);
         return result;
       }, {})
@@ -91,10 +82,22 @@ router.get('/', totalMiddleware, async (ctx, next) => {
       TODO [Урок 5.3]: Добавьте фильтр по email-адреса пользователя при получении записей из БД
     */
   }
-  console.log('filter', filter);
 
   const cursor = getTodos(filter)
-  switch (contentType) {
+  // console.log(allValues);
+  let todo = null;
+  if (filter._id) {
+    todo = await getTodo(filter._id);
+    console.log(todo);
+    if (todo) {
+      ctx.type = 'application/json'
+      ctx.body = todo
+      return
+    }
+    return
+  }
+
+  switch (query) {
     case 'todotxt':
       ctx.type = 'text/plain'
       ctx.body = cursor.pipe(stringifyStream(_todoTxtStringify))
@@ -107,20 +110,21 @@ router.get('/', totalMiddleware, async (ctx, next) => {
 
 // Получение одной записи из списка дел по идентификатору
 router.get('/:id', async (ctx, next) => {
-  const result = await getTodo({
-    /*
-      TODO [Урок 4.1]: Реализуйте фильтр записей списка дел по идентификатору.
+  const { id } = ctx.params;
 
-      Прочитайте значение параметра _id из URL-адреса.
-    */
-    /*
+  /*
       TODO [Урок 5.3]: Добавьте фильтр по email-адреса пользователя при получении записей из БД
-    */
-  })
-  if (!result) {
-    throw new NotFoundError(`Todo with id ${ctx.params.id} is not found`)
+  */
+
+  if (id.match(/^[0-9a-fA-F]{24}$/)) {
+    const result = await getTodo(ObjectID(id));
+    ctx.status = 200
+    ctx.body = { ...result }
+    return
   }
-  ctx.body = result
+
+  ctx.status = 400
+  return
 })
 
 // Создание записей в списке дел.

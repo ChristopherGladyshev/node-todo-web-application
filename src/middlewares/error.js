@@ -34,7 +34,7 @@ function _getErrorCode (err) {
   if (err instanceof errors.InvalidArgError) {
     return 400
   }
-
+  console.log(err);
   return 500
 }
 

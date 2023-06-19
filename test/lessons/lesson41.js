@@ -12,7 +12,7 @@ const request = require('supertest')
 const uuid = require('uuid').v4
 const app = require('../../src/server.js')
 
-describe('Урок 4.1', () => {
+module.exports = describe('Урок 4.1', () => {
   let collection
 
   before(async () => {

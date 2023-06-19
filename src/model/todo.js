@@ -28,7 +28,7 @@ const COLLECTION = 'todos'
  * @param {Object} query - параметры запроса find к MongoDB
  * @returns {Object} - параметры запроса find к MongoDB с подготовленным значением `_id`
  */
-function _mapObjectId (query = {}) {
+function _mapObjectId(query = {}) {
   try {
     const idQuery = query._id
       ? { _id: ObjectID(query._id) }
@@ -45,7 +45,7 @@ function _mapObjectId (query = {}) {
  * @param {TodoEntry} data - атрибуты todo
  * @returns {ObjectID} - ID созданного todo
  */
-async function createTodo (data) {
+async function createTodo(data) {
   /*
     TODO [Урок 4.2]: Реализуйте логику сохранения новой записи списка дел в базу данных
 
@@ -59,7 +59,7 @@ async function createTodo (data) {
  * @param {Object} query - критерии поиска todo для удаления
  * @returns {Boolean} - true если запись была удалена, иначе - false
  */
-async function deleteTodo (query) {
+async function deleteTodo(query) {
   const col = dbConnection.getCollection(COLLECTION)
   /*
     TODO [Урок 4.4]: Реализуйте логику удаления записи списка дел из базы данных
@@ -77,7 +77,7 @@ async function deleteTodo (query) {
  * @param {Object} query - параметры поиска todo
  * @returns {Cursor} - курсор MongoDB по найденным записям
  */
-function getTodos (query) {
+function getTodos(query) {
   const col = dbConnection.getCollection(COLLECTION)
   return col.find(_mapObjectId(query))
 }
@@ -87,11 +87,17 @@ function getTodos (query) {
  * @param {Object} query - критерии поиска todo
  * @returns {TodoEntry} - запись списка дел
  */
-const getTodo = async (query) =>{
-  const col = dbConnection.getCollection(COLLECTION)
-  const todo =  await col.findOne(query.id);
-  return todo;
-  
+const getTodo = async (_id) => {
+
+  try {
+    const col = dbConnection.getCollection(COLLECTION)
+    const todo = await col.findOne({ _id: _id });
+    return todo;
+  } catch (error) {
+    return null;
+  }
+
+
   /*
     TODO [Урок 4.1]: Реализуйте логику получения одной записи списка дел из базы данных
 
@@ -109,7 +115,7 @@ const getTodo = async (query) =>{
  * @returns {boolean} - `true` - если запись в базе данных была обновлена
  *                      `false` - если запрошенная запись в базе данных не найдена
  */
-async function updateTodo (query, data) {
+async function updateTodo(query, data) {
   const col = dbConnection.getCollection(COLLECTION)
   /*
     TODO [Урок 4.3]: Реализуйте логику обновления записи todo.
@@ -131,7 +137,7 @@ async function updateTodo (query, data) {
  * @param {string} email - email пользователя для создания записей todo
  * @returns {undefined} // TODO!
  */
-async function createTodosFromText (filePath, email) {
+async function createTodosFromText(filePath, email) {
   const fileContent = await fs.readFile(filePath)
   const todos = importTodoTxt(fileContent.toString())
   const col = dbConnection.getCollection(COLLECTION)
@@ -151,7 +157,7 @@ async function createTodosFromText (filePath, email) {
  * @param {Object} user - пользователь
  * @returns {TodosCount} - количество записей в списке дел: { total, completed }
  */
-async function getCount (user) {
+async function getCount(user) {
   const col = dbConnection.getCollection(COLLECTION)
   const [total, completed] = await Promise.all([
     col.countDocuments({
