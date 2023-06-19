@@ -43,7 +43,6 @@ function parseFilterValue(value) {
  * @returns {import('../model/todo').TodoEntry} - запись списка дел
  */
 function parseTodo(requestBody) {
-  console.log(requestBody);
   let completedAt = null;
   if (requestBody.completed) completedAt = new Date;
   const todo = {
@@ -80,11 +79,9 @@ router.get('/', totalMiddleware, async (ctx, next) => {
   }
 
   const cursor = getTodos(filter)
-  // console.log(allValues);
   let todo = null;
   if (filter._id) {
     todo = await getTodo(filter._id);
-    console.log(todo);
     if (todo) {
       ctx.type = 'application/json'
       ctx.body = todo
