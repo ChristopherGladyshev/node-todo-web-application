@@ -46,12 +46,9 @@ function _mapObjectId(query = {}) {
  * @returns {ObjectID} - ID созданного todo
  */
 async function createTodo(data) {
-  /*
-    TODO [Урок 4.2]: Реализуйте логику сохранения новой записи списка дел в базу данных
-
-    Используйте функцию col.insertOne [http://mongodb.github.io/node-mongodb-native/3.5/api/Collection.html#insertOne]:
-      await col.insertOne(<описание нового документа>)
-  */
+  const col = await dbConnection.getCollection(COLLECTION)
+  const todo = await col.insertOne(data);
+  return todo.insertedId;
 }
 
 /**

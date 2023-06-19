@@ -43,16 +43,12 @@ function parseFilterValue(value) {
  * @returns {import('../model/todo').TodoEntry} - запись списка дел
  */
 function parseTodo(requestBody) {
+  console.log(requestBody);
+  let completedAt = null;
+  if (requestBody.completed) completedAt = new Date;
   const todo = {
-    /*
-      TODO [Урок 4.2]: Заполните описание задачи списка дел:
-      {
-        title: строка
-        completed: boolean
-        completedAt: дата завершения задачи для завершенных задач из списка дел
-                    или null для незавершенных задач
-      }
-    */
+    ...requestBody,
+    completedAt,
   }
   return todo
 }

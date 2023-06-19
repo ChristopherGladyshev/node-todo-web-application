@@ -1,18 +1,16 @@
-/* globals describe, it, before, after, afterEach, beforeEach */
+/* globals describe, it, before, after, afterEach */
 const { expect } = require('chai')
+const uuid = require('uuid').v4
 const helpers = require('./helpers')
 
 const db = require('../src/model/db')
 const {
-  getTodos,
-  getTodo,
-  getCount
+  createTodo
 } = require('../src/model/todo')
 const request = require('supertest')
-const uuid = require('uuid').v4
 const app = require('../src/server.js')
 
-describe.only('Урок 4.1', () => {
+describe.only('Урок 4.2', () => {
   let collection
 
   before(async () => {
@@ -29,159 +27,76 @@ describe.only('Урок 4.1', () => {
   })
 
   describe('model/todo.js', () => {
-    describe('#getTodos', () => {
-      it('Возвращает список todo', async () => {
-        const expectedResult = [await helpers.createTodo()]
-        const result = await getTodos().toArray()
-        expect(result).to.deep.equal(expectedResult)
+    describe('#createTodo', () => {
+      it('Создает todo с заданными атрибутами', async () => {
+        // 1. Подготовка входных данных
+        const todo = { foo: uuid() }
+
+        // 2. Вызов тестируемой функции
+        await createTodo(todo)
+
+        // 3. Проверка результата работы тестируемой функции
+        const savedTodo = await collection.findOne()
+        expect(savedTodo).to.deep.equal(todo)
       })
 
-      it('Поддерживает фильтрацию списка todo по атрибутам записей', async () => {
-        const [filteredTodo] = await Promise.all([
-          helpers.createTodo(),
-          helpers.createTodo()
-        ])
-        const result = await getTodos({ foo: filteredTodo.foo }).toArray()
-        expect(result).to.deep.equal([filteredTodo])
-      })
-    })
-
-    describe('#getTodo', () => {
-      it('Возвращает todo по идентификатору', async () => {
-        const expectedResult = await helpers.createTodo()
-        const result = await getTodo(expectedResult._id)
-
-        expect(result).to.deep.equal(expectedResult)
-      })
-    })
-
-    describe('#getCount', () => {
-      const completedTodoNumber = 2
-      const totalTodoNumber = 3
-      let email
-
-      beforeEach(async () => {
-        email = helpers.stubTestUser().email
-        await Promise.all([
-          helpers.createTodo({ email, completed: true }),
-          helpers.createTodo({ email, completed: true }),
-          helpers.createTodo({ email, completed: false })
-        ])
-      })
-
-      it('Возвращает количество завершенных todo', async () => {
-        const { completed } = await getCount({ email })
-        expect(completed).to.equal(completedTodoNumber)
-      })
-
-      it('Возвращает общее количество todo', async () => {
-        const { total } = await getCount({ email })
-        expect(total).to.equal(totalTodoNumber)
+      it('Возвращает идентификатор созданного todo', async () => {
+        const todo = { foo: uuid() }
+        const insertedId = await createTodo(todo)
+        const savedTodo = await collection.findOne()
+        expect(savedTodo._id).to.deep.equal(insertedId)
       })
     })
   })
 
-  describe('#GET /api/v1/todos', () => {
-    it('должен возвращать список todo', async () => {
-      const email = helpers.stubTestUser().email
-      const todo = await helpers.createTodo({ foo: uuid(), email })
-      return new Promise((resolve, reject) => {
-        request(app.callback())
-          .get('/api/v1/todos')
-          .expect(200)
-          .then(res => {
-            expect(res.body).to.deep.equal([{
-              ...todo,
-              _id: todo._id.toString()
-            }])
-            resolve()
-          })
-          .catch(reject)
-      })
-    })
-
-    it('должен поддерживать фильтрацию по критериям todo (boolean: true)', async () => {
-      const email = helpers.stubTestUser().email
-      const todo0 = await helpers.createTodo({ foo: uuid(), completed: true, email })
-      return new Promise((resolve, reject) => {
-        request(app.callback())
-          .get('/api/v1/todos?completed=true')
-          .expect(200)
-          .then(res => {
-            expect(res.body).to.deep.equal([{
-              ...todo0,
-              _id: todo0._id.toString()
-            }])
-            resolve()
-          })
-          .catch(reject)
-      })
-    })
-
-    it('должен поддерживать фильтрацию по критериям todo (boolean: false)', async () => {
-      const email = helpers.stubTestUser().email
-      await helpers.createTodo({ foo: uuid(), completed: true, email })
-      const todo1 = await helpers.createTodo({ foo: uuid(), completed: false, email })
-      return new Promise((resolve, reject) => {
-        request(app.callback())
-          .get('/api/v1/todos?completed=false')
-          .expect(200)
-          .then(res => {
-            expect(res.body).to.deep.equal([{
-              ...todo1,
-              _id: todo1._id.toString()
-            }])
-            resolve()
-          })
-          .catch(reject)
-      })
-    })
-
-    it('должен поддерживать фильтрацию по критериям todo (string)', async () => {
-      const email = helpers.stubTestUser().email
-      const todo0 = await helpers.createTodo({ foo: uuid(), completed: true, email })
-      await helpers.createTodo({ foo: uuid(), completed: false, email })
-      return new Promise((resolve, reject) => {
-        request(app.callback())
-          .get(`/api/v1/todos?foo=${todo0.foo}`)
-          .expect(200)
-          .then(res => {
-            expect(res.body).to.deep.equal([{
-              ...todo0,
-              _id: todo0._id.toString()
-            }])
-            resolve()
-          })
-          .catch(reject)
-      })
-    })
-  })
-
-  describe('#GET /api/v1/todo/:id', () => {
-    it('должен возвращать todo по идентификатору', async () => {
-      const email = helpers.stubTestUser().email
-      const todo = await helpers.createTodo({ foo: uuid(), email })
-      return new Promise((resolve, reject) => {
-        request(app.callback())
-          .get(`/api/v1/todos/${todo._id}`)
-          .expect(200)
-          .then(res => {
-            expect(res.body).to.deep.equal({
-              ...todo,
-              _id: todo._id.toString()
-            })
-            resolve()
-          })
-          .catch(reject)
-      })
-    })
-
-    it('должен возвращать ошибку, если идентификатор имеет неверный формат', async () => {
+  describe('#POST /api/v1/todos', () => {
+    it('должен создавать todo (completed: true)', async () => {
       helpers.stubTestUser()
+      const todo = {
+        title: uuid(),
+        completed: true
+      }
       return new Promise((resolve, reject) => {
         request(app.callback())
-          .get(`/api/v1/todos/${uuid()}`)
-          .expect(400)
+          .post('/api/v1/todos/')
+          .set('Content-Type', 'application/json')
+          .send(JSON.stringify(todo))
+          .expect(201)
+          .expect('location', /\/api\/v1\/todos\//)
+          .then(res => {
+            const id = res.headers.location
+              .split('/')
+              .slice(-1)[0]
+            return helpers.getTodo(id)
+          })
+          .then(({ _id, completedAt, ...todoPayload }) => {
+            expect(completedAt.getTime()).to.be.lt(Date.now())
+            expect(todoPayload).to.deep.include(todo)
+          })
+          .then(resolve)
+          .catch(reject)
+      })
+    })
+
+    it('должен создавать todo (completed: false)', async () => {
+      helpers.stubTestUser()
+      const todo = { title: uuid() }
+      return new Promise((resolve, reject) => {
+        request(app.callback())
+          .post('/api/v1/todos/')
+          .set('Content-Type', 'application/json')
+          .send(JSON.stringify(todo))
+          .expect(201)
+          .expect('location', /\/api\/v1\/todos\//)
+          .then(res => {
+            const id = res.headers.location
+              .split('/')
+              .slice(-1)[0]
+            return helpers.getTodo(id)
+          })
+          .then(({ _id, ...todoPayload }) => {
+            expect(todoPayload).to.deep.include(todo)
+          })
           .then(resolve)
           .catch(reject)
       })
