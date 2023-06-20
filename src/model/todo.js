@@ -114,6 +114,7 @@ const getTodo = async (_id) => {
  */
 async function updateTodo(query, data) {
   const col = dbConnection.getCollection(COLLECTION)
+  const updateTodo = await col.updateOne({_id: ObjectID(query._id)}, { $set: data })
   /*
     TODO [Урок 4.3]: Реализуйте логику обновления записи todo.
 
@@ -126,6 +127,7 @@ async function updateTodo(query, data) {
     Подсказка: используйте поле `result` из результата выполнения функции col.updateOne,
     чтобы выяснить, успешно ли выполнено обновление записи базе данных?
    */
+  return updateTodo.result.nModified
 }
 
 /**
