@@ -60,18 +60,18 @@ router.use(apiAuth)
 
 // Получение списка задач. Фильтры задаются параметрами GET-запроса
 router.get('/', totalMiddleware, async (ctx, next) => {
-  const { query } = ctx.request
+  const { contentType, ...query } = ctx.query
 
   const filter = {
     ...Object.
       entries(query).
       reduce((result, [key, value]) => {
-        /* добавляем в result значение { [key]: value } */
         if (key === 'id') key = '_id';
-        result[key] = parseFilterValue(value);
-        return result;
+        return {
+          ...result,
+          [key]: parseFilterValue(value),
+        }
       }, {})
-
 
     /*
       TODO [Урок 5.3]: Добавьте фильтр по email-адреса пользователя при получении записей из БД
@@ -79,18 +79,7 @@ router.get('/', totalMiddleware, async (ctx, next) => {
   }
 
   const cursor = getTodos(filter)
-  let todo = null;
-  if (filter._id) {
-    todo = await getTodo(filter._id);
-    if (todo) {
-      ctx.type = 'application/json'
-      ctx.body = todo
-      return
-    }
-    return
-  }
-
-  switch (query) {
+  switch (contentType) {
     case 'todotxt':
       ctx.type = 'text/plain'
       ctx.body = cursor.pipe(stringifyStream(_todoTxtStringify))
@@ -169,7 +158,7 @@ router.patch('/:id', koaBody(), totalMiddleware, async (ctx, next) => {
     /*
       TODO [Урок 5.3]: Добавьте проверку email-адреса пользователя при обновлении записей в БД
     */
-  }, {...ctx.request.body});
+  }, { ...ctx.request.body });
   if (!result) {
     throw new NotFoundError(`todo with ID ${ctx.params.id} is not found`)
   }
