@@ -58,6 +58,7 @@ async function createTodo(data) {
  */
 async function deleteTodo(query) {
   const col = dbConnection.getCollection(COLLECTION)
+  const res = await col.deleteOne({ ...query, _id: ObjectID(query._id) });
   /*
     TODO [Урок 4.4]: Реализуйте логику удаления записи списка дел из базы данных
 
@@ -67,6 +68,7 @@ async function deleteTodo(query) {
     Подсказка: используйте поле `result` из результата выполнения функции col.updateOne,
     чтобы выяснить, успешно ли выполнено удаление записи из базы данных?
   */
+  return Boolean(res.result.ok)
 }
 
 /**
@@ -114,7 +116,7 @@ const getTodo = async (_id) => {
  */
 async function updateTodo(query, data) {
   const col = dbConnection.getCollection(COLLECTION)
-  const updateTodo = await col.updateOne({_id: ObjectID(query._id)}, { $set: data })
+  const updateTodo = await col.updateOne({ _id: ObjectID(query._id) }, { $set: data })
   /*
     TODO [Урок 4.3]: Реализуйте логику обновления записи todo.
 
