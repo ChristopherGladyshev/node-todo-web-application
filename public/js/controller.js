@@ -9,7 +9,7 @@
    * @param {object} model The model instance
    * @param {object} view The view instance
    */
-  function Controller (model, view) {
+  function Controller(model, view) {
     var self = this
     self.model = model
     self.view = view
@@ -273,14 +273,19 @@
    * @param {boolean|undefined} force  forces a re-painting of todo items.
    */
   Controller.prototype._filter = function (force) {
-    var activeRoute = this._activeRoute.charAt(0).toUpperCase() + this._activeRoute.substr(1)
+    var activeRoute
+    if (this._activeRoute) {
+      var activeRoute = this._activeRoute.charAt(0).toUpperCase() + this._activeRoute.substr(1)
 
-    // If the last active route isn't "All", or we're switching routes, we
-    // re-create the todo item elements, calling:
-    //   this.show[All|Active|Completed]();
-    if (force || this._lastActiveRoute !== 'All' || this._lastActiveRoute !== activeRoute) {
-      this['show' + activeRoute]()
+      // If the last active route isn't "All", or we're switching routes, we
+      // re-create the todo item elements, calling:
+      //   this.show[All|Active|Completed]();
+      if (force || this._lastActiveRoute !== 'All' || this._lastActiveRoute !== activeRoute) {
+        this['show' + activeRoute]()
+      }
     }
+
+
 
     this._lastActiveRoute = activeRoute
   }

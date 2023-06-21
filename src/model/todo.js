@@ -142,6 +142,12 @@ async function createTodosFromText(filePath, email) {
   const fileContent = await fs.readFile(filePath)
   const todos = importTodoTxt(fileContent.toString())
   const col = dbConnection.getCollection(COLLECTION)
+  console.log('log1', fileContent.toString());
+
+  const res = await col.insertMany(todos.map(todo => ({ ...todo, email })))
+  return res.ops
+
+
   /*
     TODO [Урок 4.6]: Сохраните импортированные записи списка дел в базу данных.
 
@@ -151,6 +157,7 @@ async function createTodosFromText(filePath, email) {
 
     Верните массив созданных записей списка дел
   */
+
 }
 
 /**

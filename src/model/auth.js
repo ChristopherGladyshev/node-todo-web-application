@@ -1,6 +1,7 @@
 const { AuthenticationError } = require('../model/errors')
 
 function assertAuthenticated (ctx) {
+  if (!ctx.state.user) throw new AuthenticationError();
   /*
     TODO [Урок 5.2]: Реализуйте функцию проверки аутентификации пользователя.
 

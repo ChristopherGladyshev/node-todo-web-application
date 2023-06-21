@@ -6,7 +6,7 @@ const { AuthenticationError } = require('../model/errors')
  * @param {*} ctx - контекст выполнения запроса
  * @param {*} next - следующий в цепочке middleware
  */
-async function apiAuth (ctx, next) {
+async function apiAuth(ctx, next) {
   auth.assertAuthenticated(ctx)
   await next()
 }
@@ -16,7 +16,7 @@ async function apiAuth (ctx, next) {
  * @param {*} ctx - контекст выполнения запроса
  * @param {*} next - следующий в цепочке middleware
  */
-async function viewAuth (ctx, next) {
+async function viewAuth(ctx, next) {
   try {
     auth.assertAuthenticated(ctx)
   } catch (err) {
@@ -26,6 +26,8 @@ async function viewAuth (ctx, next) {
       Подсказка: для непрошедших аутентификацию пользователей переменная err будет иметь тип AuthenticationError
       (`err instanceof AuthenticationError` ==> true)
     */
+    if (err instanceof AuthenticationError) return ctx.redirect('/login')
+    
     throw err
   }
 

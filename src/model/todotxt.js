@@ -21,7 +21,6 @@ function exportTodoTxt (todo) {
  */
 function importTodoTxt (fileContent) {
   const todotxts = TodoTxt.parse(fileContent.trim())
-  console.log(fileContent);
   return todotxts.map(todotxt => ({
     title: todotxt.text,
     completed: todotxt.complete,

@@ -12,6 +12,7 @@
 
   // addEventListener wrapper:
   window.$on = function (target, type, callback, useCapture) {
+    if (!target) return
     target.addEventListener(type, callback, !!useCapture)
   }
 
