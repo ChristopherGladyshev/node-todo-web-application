@@ -71,7 +71,7 @@ router.get('/', totalMiddleware, async (ctx, next) => {
           ...result,
           [key]: parseFilterValue(value),
         }
-      }, {})
+      }, { email: ctx.state.user.email })
 
     /*
       TODO [Урок 5.3]: Добавьте фильтр по email-адреса пользователя при получении записей из БД
@@ -99,7 +99,11 @@ router.get('/:id', async (ctx, next) => {
   */
 
   if (id.match(/^[0-9a-fA-F]{24}$/)) {
-    const result = await getTodo(ObjectID(id));
+    const result = await getTodo(ObjectID(id), ctx.state.user.email);
+    if (!result) {
+      ctx.status = 404
+      return
+    }
     ctx.status = 200
     ctx.body = { ...result }
     return
@@ -120,13 +124,19 @@ router.post('/', koaBody({ multipart: true }), totalMiddleware, async (ctx, next
       Используйте второй аргумент функции #createTodosFromText.
       В случае необходимости, реализуйте недостающую логику в функции #createTodosFromText
     */
-    const result = await createTodosFromText(ctx.request.files.todotxt.path)
+    const result = await createTodosFromText(
+      ctx.request.files.todotxt.path,
+      ctx.state.user.email
+    )
     ctx.body = result
     ctx.status = 201
     return
   }
 
-  const todo = parseTodo(ctx.request.body)
+  const todo = {
+    ...parseTodo(ctx.request.body),
+    email: ctx.state.user.email,
+  }
   /*
     TODO [Урок 5.3]: Добавьте email-адрес пользователя при создании записи в списке дел
     todo.email = ...
@@ -139,11 +149,14 @@ router.post('/', koaBody({ multipart: true }), totalMiddleware, async (ctx, next
 // Удаление записи по идентификатору
 router.delete('/:id', totalMiddleware, async (ctx, next) => {
   const result = await deleteTodo({
-    _id: ctx.params.id
-    /*
-      TODO [Урок 5.3]: Добавьте проверку email-адреса пользователя при удалении записей из БД
-    */
+    _id: ctx.params.id,
+    email: ctx.state.user.email
   })
+  if (!result) {
+    ctx.status = 404
+    return
+  }
+
   if (!result) {
     throw new NotFoundError(`todo with ID ${ctx.params.id} is not found`)
   }
@@ -152,9 +165,9 @@ router.delete('/:id', totalMiddleware, async (ctx, next) => {
 
 // Обновление записи с указанным идентификатором
 router.patch('/:id', koaBody(), totalMiddleware, async (ctx, next) => {
-  console.log(ctx.request.body);
   const result = await updateTodo({
-    _id: ctx.params.id
+    _id: ctx.params.id,
+    email: ctx.state.user.email
     /*
       TODO [Урок 5.3]: Добавьте проверку email-адреса пользователя при обновлении записей в БД
     */

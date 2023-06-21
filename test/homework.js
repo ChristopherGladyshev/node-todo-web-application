@@ -1,65 +1,47 @@
-/* globals beforeEach, describe, it */
+/* globals describe, it, beforeEach, afterEach */
 const { expect } = require('chai')
-const uuid = require('uuid').v4
-const { assertAuthenticated } = require('../src/model/auth')
-const { AuthenticationError } = require('../src/model/errors')
 const request = require('supertest')
-const sinon = require('sinon')
-const fs = require('fs').promises
-const path = require('path')
+const uuid = require('uuid').v4
 
-const app = require('../src/server')
-const auth = require('../src/model/auth')
+const app = require('../src/server.js')
+const db = require('../src/model/db')
+const helpers = require('./helpers')
 
-describe.only('Урок 5.2', () => {
-  describe('#assertAuthenticated', () => {
-    it('Выбрасывает AuthenticationError, если пользователь не выполнил аутентификацию', async () => {
-      const ctx = {
-        state: {}
-      }
-      expect(() => assertAuthenticated(ctx)).to.throw(AuthenticationError)
-    })
-
-    it('Не выбрасывает исключение, если пользователь выполнил аутентификацию', async () => {
-      const ctx = {
-        state: {
-          user: {
-            email: uuid()
-          }
-        }
-      }
-
-      assertAuthenticated(ctx)
-    })
+describe.only('Урок 5.3', () => {
+  beforeEach(async () => {
+    await db.init()
   })
 
-  describe('#GET /', () => {
-    const testUser = { email: uuid() }
+  afterEach(async () => {
+    await helpers.dropDb()
+    await db.close()
+  })
 
-    beforeEach(() => {
-      sinon.stub(console, 'error')
-    })
-
-    it('Возвращает редирект на /login для неаутентифицированных пользователей', done => {
-      request(app.callback())
-        .get('/')
-        .expect(302)
-        .expect('location', '/login')
-        .then(res => done())
-        .catch(done)
-    })
-
-    it('Возвращает содержимое index.html для аутентифицированных пользователей', async () => {
-      const indexHtml = await fs.readFile(path.join(__dirname, '../tpl/index.html'))
-      sinon.stub(auth, 'assertAuthenticated').callsFake(ctx => {
-        ctx.state.user = testUser
-      })
+  describe('#GET /api/v1/todos', () => {
+    it('должен возвращать ошибку для неаутентифицированных пользователей', async () => {
+      await helpers.createTodo({ title: uuid(), email: uuid() })
       return new Promise((resolve, reject) => {
         request(app.callback())
-          .get('/')
+          .get('/api/v1/todos')
+          .expect(401)
+          .then(resolve)
+          .catch(reject)
+      })
+    })
+
+    it('должен фильтровать данные по email-адресу пользователя', async () => {
+      const email = helpers.stubTestUser().email
+      await helpers.createTodo({ foo: uuid(), email: uuid() })
+      const todo = await helpers.createTodo({ foo: uuid(), email })
+      return new Promise((resolve, reject) => {
+        request(app.callback())
+          .get('/api/v1/todos')
           .expect(200)
           .then(res => {
-            expect(res.text).to.equal(indexHtml.toString())
+            expect(res.body).to.deep.equal([{
+              ...todo,
+              _id: todo._id.toString()
+            }])
             resolve()
           })
           .catch(reject)
@@ -67,49 +49,111 @@ describe.only('Урок 5.2', () => {
     })
   })
 
-  describe('#GET /login', () => {
-    it('Возвращает содержимое login.html', async () => {
-      const loginHtml = await fs.readFile(path.join(__dirname, '../tpl/login.html'))
+  describe('#GET /api/v1/todo/:id', () => {
+    it('должен возвращать ошибку для неаутентифицированных пользователей', async () => {
+      const todo = await helpers.createTodo({ title: uuid(), email: uuid() })
       return new Promise((resolve, reject) => {
         request(app.callback())
-          .get('/login')
-          .expect(200)
-          .then(res => {
-            expect(res.text).to.equal(loginHtml.toString())
-            resolve()
-          })
+          .get(`/api/v1/todos/${todo._id}`)
+          .expect(401)
+          .then(resolve)
+          .catch(reject)
+      })
+    })
+
+    it('должен возвращать ошибку 404 если пользователь пытается получить доступ к данным другого пользователя', async () => {
+      helpers.stubTestUser()
+      const todo = await helpers.createTodo({ foo: uuid(), email: uuid() })
+      return new Promise((resolve, reject) => {
+        request(app.callback())
+          .get(`/api/v1/todos/${todo._id}`)
+          .expect(404)
+          .then(resolve)
           .catch(reject)
       })
     })
   })
 
-  describe('#GET /api/v1/profile', () => {
-    const testUser = { email: uuid() }
-
-    beforeEach(() => {
-      sinon.stub(console, 'error')
-    })
-
-    it('Возвращает ошибку для неаутентифицированных пользователей', done => {
-      request(app.callback())
-        .get('/api/v1/profile')
-        .expect(401)
-        .then(res => done())
-        .catch(done)
-    })
-
-    it('Возвращает профиль пользователя', async () => {
-      sinon.stub(auth, 'assertAuthenticated').callsFake(ctx => {
-        ctx.state.user = testUser
-      })
+  describe('#POST /api/v1/todos', () => {
+    it('должен включать email-адрес в описание задачи из списка дел', async () => {
+      const email = helpers.stubTestUser().email
+      const todo = {
+        title: uuid(),
+        completed: true
+      }
       return new Promise((resolve, reject) => {
         request(app.callback())
-          .get('/api/v1/profile')
-          .expect(200)
+          .post('/api/v1/todos/')
+          .set('Content-Type', 'application/json')
+          .send(JSON.stringify(todo))
+          .expect(201)
+          .expect('location', /\/api\/v1\/todos\//)
           .then(res => {
-            expect(res.body).to.deep.equal(testUser)
-            resolve()
+            const id = res.headers.location
+              .split('/')
+              .slice(-1)[0]
+            return helpers.getTodo(id)
           })
+          .then(({ _id, completedAt, ...todoPayload }) => {
+            expect(todoPayload.email).to.equal(email)
+          })
+          .then(resolve)
+          .catch(reject)
+      })
+    })
+  })
+
+  describe('#DELETE /api/v1/todos/:id', () => {
+    it('должен возвращать ошибку, если todo не найден (неверный email)', async () => {
+      helpers.stubTestUser()
+      const todo = await helpers.createTodo({ foo: uuid(), email: uuid() })
+      return new Promise((resolve, reject) => {
+        request(app.callback())
+          .delete(`/api/v1/todos/${todo._id}`)
+          .expect(404)
+          .then(resolve)
+          .catch(reject)
+      })
+    })
+
+    it('должен возвращать ошибку для неаутентифицированных пользователей', async () => {
+      const todo = await helpers.createTodo({ title: uuid(), email: uuid() })
+      return new Promise((resolve, reject) => {
+        request(app.callback())
+          .delete(`/api/v1/todos/${todo._id}`)
+          .expect(401)
+          .then(resolve)
+          .catch(reject)
+      })
+    })
+  })
+
+  describe('#PATCH /api/v1/todos/:id', () => {
+    const patch = { title: uuid() }
+
+    it('должен возвращать ошибку, если todo не найден (неверный email)', async () => {
+      helpers.stubTestUser()
+      const todo = await helpers.createTodo({ foo: uuid(), email: uuid() })
+      return new Promise((resolve, reject) => {
+        request(app.callback())
+          .patch(`/api/v1/todos/${todo._id}`)
+          .set('Content-Type', 'application/json')
+          .send(JSON.stringify(patch))
+          .expect(404)
+          .then(resolve)
+          .catch(reject)
+      })
+    })
+
+    it('должен возвращать ошибку для неаутентифицированных пользователей', async () => {
+      const todo = await helpers.createTodo({ title: uuid(), email: uuid() })
+      return new Promise((resolve, reject) => {
+        request(app.callback())
+          .patch(`/api/v1/todos/${todo._id}`)
+          .set('Content-Type', 'application/json')
+          .send(JSON.stringify(patch))
+          .expect(401)
+          .then(resolve)
           .catch(reject)
       })
     })

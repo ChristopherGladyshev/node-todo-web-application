@@ -68,7 +68,7 @@ async function deleteTodo(query) {
     Подсказка: используйте поле `result` из результата выполнения функции col.updateOne,
     чтобы выяснить, успешно ли выполнено удаление записи из базы данных?
   */
-  return Boolean(res.result.ok)
+  return Boolean(res.result.n)
 }
 
 /**
@@ -86,11 +86,11 @@ function getTodos(query) {
  * @param {Object} query - критерии поиска todo
  * @returns {TodoEntry} - запись списка дел
  */
-const getTodo = async (_id) => {
+const getTodo = async (_id, email) => {
 
   try {
     const col = dbConnection.getCollection(COLLECTION)
-    const todo = await col.findOne({ _id: _id });
+    const todo = await col.findOne({ _id: _id, email });
     return todo;
   } catch (error) {
     return null;
@@ -116,7 +116,7 @@ const getTodo = async (_id) => {
  */
 async function updateTodo(query, data) {
   const col = dbConnection.getCollection(COLLECTION)
-  const updateTodo = await col.updateOne({ _id: ObjectID(query._id) }, { $set: data })
+  const updateTodo = await col.updateOne({ _id: ObjectID(query._id), email: query.email }, { $set: data })
   /*
     TODO [Урок 4.3]: Реализуйте логику обновления записи todo.
 
@@ -142,7 +142,6 @@ async function createTodosFromText(filePath, email) {
   const fileContent = await fs.readFile(filePath)
   const todos = importTodoTxt(fileContent.toString())
   const col = dbConnection.getCollection(COLLECTION)
-  console.log('log1', fileContent.toString());
 
   const res = await col.insertMany(todos.map(todo => ({ ...todo, email })))
   return res.ops

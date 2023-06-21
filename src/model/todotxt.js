@@ -10,7 +10,6 @@ function exportTodoTxt (todo) {
   todotxt.text = todo.title
   todotxt.completed =  todo.completedAt
   todotxt.complete = todo.completed
-  console.log(todotxt.toString() + '\n');
   return todotxt.toString() + '\n'
 }
 

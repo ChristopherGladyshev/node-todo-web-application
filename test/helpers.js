@@ -33,7 +33,6 @@ async function createTodoTxt () {
 }
 
 async function getTodo (id) {
-  console.log('db',db);
   const collection = await db.getCollection(TODO_COLLECTION)
   return collection.findOne({ _id: ObjectID(id) })
 }
